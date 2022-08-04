@@ -1,13 +1,9 @@
-# SPDX-FileCopyrightText: 2021 ladyada for Adafruit Industries
-# SPDX-License-Identifier: MIT
-
-# import board
 import math
 import time
 import json
 tideData = []
 dayNumber = 216.0
-zoomDays = 2
+zoomDays = 3
 with open('tides.json', 'r') as f:
   tideData = json.load(f)
 sunData = []
@@ -16,21 +12,10 @@ with open('sun.json', 'r') as f:
 
 import displayio
 from adafruit_display_shapes.rect import Rect
-from adafruit_display_shapes.circle import Circle
-from adafruit_display_shapes.roundrect import RoundRect
+# from adafruit_display_shapes.circle import Circle
 from adafruit_display_shapes.line import Line
-from adafruit_display_shapes.polygon import Polygon
 from adafruit_magtag.magtag import MagTag
 magtag = MagTag()
-# use built in display (PyPortal, PyGamer, PyBadge, CLUE, etc.)
-# see guide for setting up external displays (TFT / OLED breakouts, RGB matrices, etc.)
-# https://learn.adafruit.com/circuitpython-display-support-using-displayio/display-and-display-bus
-# # # display = board.DISPLAY
-
-# # # # Make the display context
-# # # splash = displayio.Group()
-# # # time.sleep(1.5)
-# # # display.show(splash)
 
 # Make a background color fill
 color_bitmap = displayio.Bitmap(magtag.graphics.display.width, magtag.graphics.display.height, 1)
@@ -51,82 +36,75 @@ def tidal (ax, ay, bx, by, highToLow) :
     topY = ay
     if by < ay:
         topY = by
-    for x in range(ax, bx):
+    for x in range(ax, bx, 1):
         magtag.graphics.splash.append(Line(x,
         int((math.cos(cosOffset + ((x - ax)/rangeX)*math.pi)+1)*rangeY)+topY,
         x+1,
         int((math.cos(cosOffset + ((x+1 - ax)/rangeX)*math.pi)+1)*rangeY)+topY, 0x000000))
 
+def dayToPix(d):
+    return (d - dayNumber) * 300.0 / zoomDays
 
+def sunFilter(e):
+    return e[0] >= dayNumber and e[0] < (dayNumber + zoomDays +0.5)
+
+# night time, day time
+startX = 0
+endX = 0
+for e in filter(sunFilter, sunData):
+    print(e)
+    if e[3] == "R": # end of night
+        endX = dayToPix(e[0])
+        dateTxt = magtag.add_text(
+            text_position=(
+                int(dayToPix(e[0])),
+                122,
+            ),
+            text_scale=1,
+        )
+        magtag.set_text(e[1], dateTxt)
+    if e[3] == "S":
+        startX = dayToPix(e[0])
+    if not endX == 0 and e[3] == "R":
+        print("night rectangle", int(startX), 0, int(endX-startX), magtag.graphics.display.height)
+        magtag.graphics.splash.append(Rect(int(startX), 0, int(endX-startX), magtag.graphics.display.height, fill=0x999999, outline=0x999999))
+
+# # rising and falling tides
 def dispFilter(e):
     return e[0] >= (dayNumber - 0.3) and e[0] < (dayNumber + zoomDays + 0.3)
+def tideToPix(t):
+    return (14.0 - t * -1) * 10 - 130
+    # rv = (14.0 - t * -1) * 10 - 130
+    # print (t, "tideToPix", rv)
+    #return rv
 
-# night time
-nightDay = filter(dispFilter, sunData)
-# # # rising and falling tides
-startX = 0
-for dispD in nightDay:
-    endX = (dispD[0] - dayNumber) * 300.0 / zoomDays
-    # print(dir)
-    if not startX == 0:
-        rect2 = Rect(int(startX), 0, int(endX-startX), magtag.graphics.display.height, fill=0x999999, outline=0x999999)
-        magtag.graphics.splash.append(rect2)
-    dir = 1
-    startX = (dispD[0] - dayNumber) * 300.0 / zoomDays
-
-
-
-dispDay = filter(dispFilter, tideData)
-# # # rising and falling tides
 dir = 0
 startX = 0
 startY = 0
-for dispD in dispDay:
-    endX = (dispD[0] - dayNumber) * 300.0 / zoomDays
-    endY = (14.0 - dispD[4] * -1) * 10 - 130
+for dispD in filter(dispFilter, tideData):
+    endX = dayToPix(dispD[0])
+    endY = tideToPix(dispD[4])
     # print(dir)
     if not dir == 0:
         tidal(int(startX), int(startY), int(endX), int(endY), dir)
     dir = 1
     if dispD[6] == "L":
         dir = -1
-    startX = (dispD[0] - dayNumber) * 300.0 / zoomDays
-    startY = (14.0 - dispD[4] * -1) * 10 - 130
+    startX = dayToPix(dispD[0])
+    startY = tideToPix(dispD[4])
 
-# # tidal(0, 120, 40, 20, 1)
-# # tidal(40, 20, 80, 90, -1)
-# # tidal(80, 90, 122, 10, 1)
-# # tidal(122, 10, 160, 110, -1)
 
-# # tidal(160, 110, 200, 10, 1)
-# # tidal(200, 10, 240, 90, -1)
-# # tidal(240, 90, 282, 15, 1)
-# # tidal(282, 15, 320, 90, -1)
-
-# magtag.add_text(
+# testPos = magtag.add_text(
 #     text_position=(
 #         148,
 #         (magtag.graphics.display.height // 2) - 1,
 #     ),
 #     text_scale=1,
 # )
-# magtag.set_text("08/02", 0)
-# magtag.add_text(
-#     text_position=(
-#         130,
-#         magtag.graphics.display.height - 7,
-#     ),
-#     text_scale=1,
-# )
-# magtag.set_text("12:03 -0.3\"", 1)
-t2 = magtag.add_text(
-    text_position=(
-        180,
-        3,
-    ),
-    text_scale=1,
-)
-magtag.set_text("7:28 11.2\"", t2)
-# magtag.graphics.display.refresh()
+# magtag.set_text("08/02", textPos)
+
+time.sleep(3.5)
+magtag.graphics.display.refresh()
+
 while True:
     time.sleep(2.5)
