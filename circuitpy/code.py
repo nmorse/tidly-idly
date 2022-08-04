@@ -70,25 +70,39 @@ for e in filter(sunFilter, sunData):
         magtag.graphics.splash.append(Rect(int(startX), 0, int(endX-startX), magtag.graphics.display.height, fill=0x999999, outline=0x999999))
 
 # # rising and falling tides
-def dispFilter(e):
+def tideFilter(e):
     return e[0] >= (dayNumber - 0.3) and e[0] < (dayNumber + zoomDays + 0.3)
+
+maxTideFt = 11.5
+minTideFt = -1.7
+t2pFactor = magtag.graphics.display.height / (maxTideFt - minTideFt) * -1.0
+t2pOffset = maxTideFt * t2pFactor * -1.0
+print("t2pFactor", t2pFactor)
+print("t2pOffset", t2pOffset)
 def tideToPix(t):
-    return (14.0 - t * -1) * 10 - 130
+    # return (14.0 - t * -1) * 10 - 130
+    return (t) * t2pFactor + t2pOffset
+    # return int(t * -8.57142857143 + 106.857142857 + 64.0)
+    # return (((14.0 - t * -1) * 10 - 130) - 128) * -1 + 64 + 10
+    # return (((14.0 - float(t) * -1.0) * 10.0 - 130.0) - float(magtag.graphics.display.height)) * -1.0 + 64.0
     # rv = (14.0 - t * -1) * 10 - 130
     # print (t, "tideToPix", rv)
     #return rv
 
+print("tideToPix(12.0)", tideToPix(12.0))
+print("tideToPix(-2.0)", tideToPix(-2.0))
+
 dir = 0
 startX = 0
 startY = 0
-for dispD in filter(dispFilter, tideData):
+for dispD in filter(tideFilter, tideData):
     endX = dayToPix(dispD[0])
     endY = tideToPix(dispD[4])
     # print(dir)
     if not dir == 0:
         tidal(int(startX), int(startY), int(endX), int(endY), dir)
     dir = 1
-    if dispD[6] == "L":
+    if dispD[6] == "H":
         dir = -1
     startX = dayToPix(dispD[0])
     startY = tideToPix(dispD[4])
